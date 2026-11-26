@@ -1216,6 +1216,23 @@ window.__ModuleLoader__.load({
           const dx = (event.clientX - active.origin.x) / camera.zoom
           const dy = (event.clientY - active.origin.y) / camera.zoom
           const handle = active.handle
+          // Corners scale the whole card uniformly; edges stretch a single axis.
+          if (handle.length === 2) {
+            const factorX = (node.width + (handle.includes('e') ? dx : -dx)) / node.width
+            const factorY = (node.height + (handle.includes('s') ? dy : -dy)) / node.height
+            let factor = (factorX + factorY) / 2
+            factor = Math.max(factor, MIN_WIDTH / node.width, MIN_HEIGHT / node.height)
+            factor = Math.min(factor, MAX_WIDTH / node.width, MAX_HEIGHT / node.height)
+            const uniformWidth = Math.round(node.width * factor)
+            const uniformHeight = Math.round(node.height * factor)
+            const uniformX = handle.includes('w') ? node.x + node.width - uniformWidth : node.x
+            const uniformY = handle.includes('n') ? node.y + node.height - uniformHeight : node.y
+            onResizeNode(active.nodeId, {
+              x: Math.round(uniformX), y: Math.round(uniformY),
+              width: uniformWidth, height: uniformHeight,
+            }, false)
+            return
+          }
           let x = node.x
           let y = node.y
           let width = node.width
@@ -3058,7 +3075,7 @@ window.__ModuleLoader__.load({
             t,
             onSelectNodes: (ids) => { setSelection(ids); if (ids.length > 0) { setSelectedGroup(undefined) } },
             onSelectConnection: (id) => { setSelectedConnection(id); if (id !== undefined) { setSelection([]); setSelectedGroup(undefined) } },
-            onSelectGroup: (id) => { setSelectedGroup(id); setSelection([]) },
+            onSelectGroup: (id) => { setSelectedGroup(id); if (id !== undefined) setSelection([]) },
             onCreateNote: createNoteAt,
             onMoveNodes: moveNodes,
             onResizeNode: resizeNode,
