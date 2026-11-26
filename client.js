@@ -774,6 +774,314 @@ window.__ModuleLoader__.load({
       })
     }
 
+
+    const toolButton = (label, title, onPress, options = {}) => h('button', {
+      type: 'button', title, 'aria-label': title, disabled: options.disabled === true,
+      onPointerDown: (event) => { event.preventDefault(); event.stopPropagation() },
+      onClick: options.disabled === true ? undefined : onPress,
+      style: {
+        minWidth: 30, height: 26, padding: '0 6px', borderRadius: 6,
+        border: '1px solid transparent', background: 'transparent',
+        color: options.disabled === true ? 'var(--dsw-alias-label-tertiary)' : 'var(--dsw-alias-label-primary)',
+        cursor: options.disabled === true ? 'default' : 'pointer',
+        fontFamily: 'inherit', fontSize: 13, opacity: options.disabled === true ? 0.45 : 1,
+        ...options.style,
+      },
+    }, label)
+
+    // --------------------------------------------------------- rich body editor
+
+    const HTML_ESCAPE = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }
+    const escapeHtml = (text) => String(text).replace(/[&<>"]/g, (ch) => HTML_ESCAPE[ch])
+
+    /** Inline marks rendered as real elements while editing (they stay `**`/`*`/`~~`/`` ` `` in text). */
+    function inlineToHtml(text) {
+      let out = escapeHtml(text)
+      out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      out = out.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+      out = out.replace(/~~([^~]+)~~/g, '<s>$1</s>')
+      out = out.replace(/`([^`]+)`/g, '<code>$1</code>')
+      return out
+    }
+
+    /** Walk the editable DOM back to the mark-carrying text the note stores. */
+    function htmlToInline(root) {
+      const walk = (node) => {
+        if (node === null || node === undefined) return ''
+        if (node.nodeType === 3) return node.nodeValue ?? ''
+        if (node.nodeType !== 1) return ''
+        const tag = node.tagName.toLowerCase()
+        const inner = Array.from(node.childNodes).map(walk).join('')
+        if (tag === 'br') return '\n'
+        if (tag === 'strong' || tag === 'b') return `**${inner}**`
+        if (tag === 'em' || tag === 'i') return `*${inner}*`
+        if (tag === 's' || tag === 'strike' || tag === 'del') return `~~${inner}~~`
+        if (tag === 'code') return `\`${inner}\``
+        if (tag === 'div' || tag === 'p') return `${inner}\n`
+        return inner
+      }
+      return walk(root).replace(/\n+$/, '')
+    }
+
+    /** Blocks as the text the note stores; mirrors lib/blocks.js `toText`. */
+    function blocksToEditorText(blocks) {
+      return blocks.map((block) => {
+        const indent = '  '.repeat(Math.max(0, Number(block.i) || 0))
+        if (block.k === 'task') return `${indent}- [${block.c === true ? 'x' : ' '}] ${block.t}`
+        if (block.k === 'ol') return `${indent}${Number(block.n) || 1}. ${block.t}`
+        if (block.k === 'ul') return `${indent}- ${block.t}`
+        return block.t
+      }).join('\n')
+    }
+
+    /**
+     * One editable line per block with its marker outside the editable, the way the desktop note
+     * windows behave: the list shape is an element, not text the writer has to type around.
+     */
+    function RichBodyEditor({ initialText, onChange, onCommitEdit, onCancelEdit, t }) {
+      const [blocks, setBlocks] = useState(() => parseBlockLines(initialText))
+      const live = useRef(blocks)
+      const nodes = useRef([])
+      const activeIndex = useRef(0)
+      const focusIndex = useRef(undefined)
+
+      const publish = (next) => {
+        live.current = next
+        setBlocks(next)
+        onChange(blocksToEditorText(next))
+      }
+
+      const setText = (index, text) => {
+        const block = live.current[index]
+        if (block === undefined || block.t === text) return
+        publish(live.current.map((entry, position) => (position === index ? { ...entry, t: text } : entry)))
+      }
+
+      useEffect(() => {
+        const index = focusIndex.current
+        if (index === undefined) return
+        focusIndex.current = undefined
+        const element = nodes.current[index]
+        if (element === null || element === undefined) return
+        element.focus()
+        const range = document.createRange()
+        range.selectNodeContents(element)
+        range.collapse(true)
+        const selection = window.getSelection()
+        if (selection === null) return
+        selection.removeAllRanges()
+        selection.addRange(range)
+      })
+
+      const markerOf = (block, ordinal) => {
+        const base = { flex: '0 0 auto', minWidth: 14, opacity: 0.7, userSelect: 'none', lineHeight: '1.65' }
+        if (block.k === 'ul') return h('span', { style: base }, '•')
+        if (block.k === 'ol') return h('span', { style: base }, `${ordinal}.`)
+        if (block.k === 'task') {
+          return h('button', {
+            type: 'button',
+            'aria-checked': block.c === true,
+            role: 'checkbox',
+            onPointerDown: (event) => event.preventDefault(),
+            onClick: () => publish(live.current.map((entry, position) => (position === activeIndex.current && entry.k === 'task'
+              ? { ...entry, c: entry.c !== true } : entry))),
+            style: { ...base, border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', fontSize: 13 },
+          }, block.c === true ? '☑' : '☐')
+        }
+        return h('span', { style: { ...base, minWidth: 14 } }, '')
+      }
+
+      const ordinalAt = (index) => {
+        const block = live.current[index]
+        if (block === undefined || block.k !== 'ol') return 1
+        let ordinal = Number(block.n) || 1
+        for (let position = index - 1; position >= 0; position -= 1) {
+          const previous = live.current[position]
+          if (previous.k === 'ol' && previous.i === block.i) ordinal = (Number(previous.n) || 1) + 1
+          else break
+        }
+        return ordinal
+      }
+
+      const commitActive = () => {
+        const index = activeIndex.current
+        const element = nodes.current[index]
+        if (element === null || element === undefined) return
+        setText(index, htmlToInline(element))
+      }
+
+      const runCommand = (command) => {
+        document.execCommand('styleWithCSS', false, false)
+        document.execCommand(command)
+        commitActive()
+      }
+
+      const wrapCode = () => {
+        const selection = window.getSelection()
+        if (selection === null || selection.rangeCount === 0) return
+        const range = selection.getRangeAt(0)
+        if (range.collapsed) return
+        const code = document.createElement('code')
+        code.style.fontFamily = 'monospace'
+        code.appendChild(range.extractContents())
+        range.insertNode(code)
+        selection.removeAllRanges()
+        const after = document.createRange()
+        after.selectNodeContents(code)
+        selection.addRange(after)
+        commitActive()
+      }
+
+      const setKind = (kind) => {
+        const index = activeIndex.current
+        publish(live.current.map((entry, position) => {
+          if (position !== index) return entry
+          if (entry.k === kind) return { ...entry, k: 'p' }
+          const next = { ...entry, k: kind }
+          if (kind === 'ol') next.n = 1
+          if (kind === 'task') next.c = false
+          return next
+        }))
+        focusIndex.current = index
+      }
+
+      const onKeyDown = (event, index) => {
+        event.stopPropagation()
+        if (event.key === 'Escape') { event.preventDefault(); onCancelEdit(); return }
+        if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); onCommitEdit(); return }
+        const block = live.current[index]
+        if (block === undefined) return
+        if (event.key === 'Enter') {
+          if (event.shiftKey) return
+          event.preventDefault()
+          if (block.k !== 'p' && String(block.t).trim() === '') {
+            publish(live.current.map((entry, position) => (position === index ? { ...entry, k: 'p', i: 0 } : entry)))
+            focusIndex.current = index
+            return
+          }
+          // Split at the caret so text after it moves into the new block.
+          let head = block.t
+          let tail = ''
+          const element = nodes.current[index]
+          const selection = window.getSelection()
+          if (element !== null && element !== undefined && selection !== null && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0)
+            const after = range.cloneRange()
+            after.selectNodeContents(element)
+            after.setStart(range.endContainer, range.endOffset)
+            const holder = document.createElement('div')
+            holder.appendChild(after.extractContents())
+            tail = htmlToInline(holder)
+            head = htmlToInline(element)
+          }
+          const fresh = block.k === 'task' ? { k: 'task', t: tail, i: block.i, c: false }
+            : block.k === 'ol' ? { k: 'ol', t: tail, i: block.i, n: ordinalAt(index) + 1 }
+              : block.k === 'ul' ? { k: 'ul', t: tail, i: block.i }
+                : { k: 'p', t: tail, i: 0 }
+          const next = live.current.map((entry, position) => (position === index ? { ...entry, t: head } : entry))
+          publish([...next.slice(0, index + 1), fresh, ...next.slice(index + 1)])
+          focusIndex.current = index + 1
+          return
+        }
+        if (event.key === 'Tab') {
+          event.preventDefault()
+          publish(live.current.map((entry, position) => (position === index
+            ? { ...entry, i: Math.max(0, (Number(entry.i) || 0) + (event.shiftKey ? -1 : 1)) } : entry)))
+          focusIndex.current = index
+          return
+        }
+        if (event.key === 'Backspace') {
+          const element = nodes.current[index]
+          const caretAtStart = element !== undefined && element !== null
+            && window.getSelection()?.anchorOffset === 0
+          if (!caretAtStart || index === 0) return
+          event.preventDefault()
+          const previous = live.current[index - 1]
+          const merged = { ...previous, t: `${previous.t}${block.t}` }
+          const next = live.current.map((entry, position) => {
+            if (position === index - 1) return merged
+            if (position === index) return undefined
+            return entry
+          }).filter((entry) => entry !== undefined)
+          publish(next)
+          focusIndex.current = index - 1
+        }
+      }
+
+      const toolbar = h('div', {
+        style: {
+          display: 'flex', alignItems: 'center', gap: 2, flex: '0 0 auto',
+          padding: '4px 10px', borderTop: '1px solid var(--dsw-alias-border-l2)',
+          background: 'var(--dsw-alias-bg-layer-2)',
+        },
+      },
+      toolButton('B', t('boldTool'), () => runCommand('bold'), { style: { fontWeight: 700 } }),
+      toolButton('I', t('italicTool'), () => runCommand('italic'), { style: { fontStyle: 'italic' } }),
+      toolButton('S', t('strikeTool'), () => runCommand('strikeThrough'), { style: { textDecoration: 'line-through' } }),
+      toolButton('</>', t('codeTool'), wrapCode, { style: { fontSize: 11 } }),
+      h('span', { style: { width: 1, height: 16, margin: '0 6px', background: 'var(--dsw-alias-border-l2)' } }),
+      toolButton('•', t('bulletTool'), () => setKind('ul')),
+      toolButton('1.', t('orderedTool'), () => setKind('ol')),
+      toolButton('☑', t('taskTool'), () => setKind('task')))
+
+      let ordinal = 0
+      let previous = null
+      const rows = blocks.map((block, index) => {
+        if (block.k === 'ol') ordinal = previous !== null && previous.k === 'ol' && previous.i === block.i
+          ? ordinal + 1 : (Number(block.n) || 1)
+        else ordinal = 0
+        previous = block
+        return h('div', {
+          key: `${index}-${block.k}-${block.i}`,
+          style: {
+            display: 'flex', gap: 6, alignItems: 'flex-start',
+            paddingLeft: Math.max(0, Number(block.i) || 0) * 15,
+          },
+        },
+        markerOf(block, ordinal),
+        h('div', {
+          ref: (element) => {
+            nodes.current[index] = element
+            if (element === null || element.dataset.hydrated === '1') return
+            element.dataset.hydrated = '1'
+            element.innerHTML = inlineToHtml(block.t)
+          },
+          contentEditable: true,
+          suppressContentEditableWarning: true,
+          'data-block': index,
+          onFocus: () => { activeIndex.current = index },
+          onInput: (event) => setText(index, htmlToInline(event.currentTarget)),
+          onKeyDown: (event) => onKeyDown(event, index),
+          onBlur: () => commitActive(),
+          style: {
+            flex: '1 1 auto', minWidth: 0, outline: 'none',
+            fontSize: 14, lineHeight: 1.65, color: 'var(--dsw-alias-label-primary)',
+            whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', caretColor: PALETTE.selected,
+            textDecoration: block.k === 'task' && block.c === true ? 'line-through' : undefined,
+            opacity: block.k === 'task' && block.c === true ? 0.7 : 1,
+          },
+        }))
+      })
+
+      return h(React.Fragment, null,
+        h('div', {
+          'data-rich-editor': true,
+          onMouseDown: (event) => {
+            if (event.target !== event.currentTarget) return
+            event.preventDefault()
+            const last = live.current.length - 1
+            publish([...live.current, { k: 'p', t: '', i: 0 }])
+            focusIndex.current = last + 1
+          },
+          style: {
+            flex: '1 1 auto', minWidth: 0, overflowY: 'auto',
+            display: 'flex', flexDirection: 'column', gap: 2,
+            cursor: 'text', paddingBottom: 24,
+          },
+        }, rows),
+        toolbar)
+    }
+
     // ---------------------------------------------------------------- canvas
 
     function CanvasView({
@@ -1796,19 +2104,6 @@ window.__ModuleLoader__.load({
         })
       }
 
-      const toolButton = (label, title, onPress, options = {}) => h('button', {
-        type: 'button', title, 'aria-label': title, disabled: options.disabled === true,
-        onPointerDown: (event) => { event.preventDefault(); event.stopPropagation() },
-        onClick: options.disabled === true ? undefined : onPress,
-        style: {
-          minWidth: 30, height: 26, padding: '0 6px', borderRadius: 6,
-          border: '1px solid transparent', background: 'transparent',
-          color: options.disabled === true ? 'var(--dsw-alias-label-tertiary)' : 'var(--dsw-alias-label-primary)',
-          cursor: options.disabled === true ? 'default' : 'pointer',
-          fontFamily: 'inherit', fontSize: 13, opacity: options.disabled === true ? 0.45 : 1,
-          ...options.style,
-        },
-      }, label)
 
       // A small formatting row above the colours: the list markers are the discoverable entry
       // point, and the inline marks already existed in the renderer but had no button.
@@ -1970,28 +2265,14 @@ window.__ModuleLoader__.load({
       }, '×')),
 
       h('div', {
-        style: { flex: 1, minHeight: 0, display: 'flex', padding: '14px 16px' },
-      },
-      h('textarea', {
-        ref: bodyRef,
-        value: editing.body,
-        placeholder: t('editorPlaceholder'),
-        'aria-label': t('noteBody'),
-        onChange: (event) => onEditValue('body', event.target.value),
-        onKeyDown: (event) => {
-          event.stopPropagation()
-          if (event.key === 'Escape') { event.preventDefault(); onCancelEdit() }
-          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); onCommitEdit() }
-        },
-        style: {
-          flex: 1, minHeight: 0, border: 'none', background: 'transparent', outline: 'none',
-          padding: 0, resize: 'none', overflow: 'auto',
-          fontSize: 13, lineHeight: 1.65, color: 'var(--dsw-alias-label-primary)',
-          caretColor: PALETTE.selected, fontFamily: 'inherit',
-        },
+        style: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '12px 14px 0' },
+      }, h(RichBodyEditor, {
+        initialText: editing.body,
+        onChange: (text) => onEditValue('body', text),
+        onCommitEdit,
+        onCancelEdit,
+        t,
       })),
-
-      editorToolbar,
 
       h('div', {
         style: {
