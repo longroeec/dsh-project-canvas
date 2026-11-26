@@ -1369,7 +1369,13 @@ window.__ModuleLoader__.load({
       }
 
       const onPointerDown = (event) => {
-        if (editing !== undefined) return
+        if (editing !== undefined) {
+          // A press outside the note window commits it, the way the desktop app closes on click-away.
+          const target = event.target
+          if (target instanceof Element && target.closest('[data-note-editor]') !== null) return
+          onCommitEdit()
+          return
+        }
         const world = toWorld(event.clientX, event.clientY)
         const middleOrSpace = event.button === 1 || space || event.altKey
         if (middleOrSpace) { beginPan(event); return }
@@ -2188,6 +2194,7 @@ window.__ModuleLoader__.load({
       }, t('deleteNote')))
 
       const editor = editing === undefined ? null : h('div', {
+        'data-note-editor': true,
         onPointerDown: (event) => event.stopPropagation(),
         onDoubleClick: (event) => event.stopPropagation(),
         onBlur: (event) => {
