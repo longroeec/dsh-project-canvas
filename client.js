@@ -272,6 +272,12 @@ window.__ModuleLoader__.load({
       relationDash: { References: '5 4', Related: '1.6 3.2' },
     }
 
+    /** Paper surface of an uncoloured note: warm off-white with ink text, in both themes. */
+    const PAPER = {
+      fill: '#F7F2E7', band: '#EFE6D4', border: '#E3D9C6',
+      title: '#2B2620', body: '#4B4437', meta: '#8B8172',
+    }
+
     const ACCENT_KEYS = ['branch-a', 'branch-b', 'branch-c', 'branch-d', 'branch-e', 'emphasis']
 
     /** First-version accent hues, used for the card stripe and every colour swatch. */
@@ -798,7 +804,7 @@ window.__ModuleLoader__.load({
           flex: '0 0 auto', width: 16, height: 16, marginTop: 3, padding: 0,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           borderRadius: 4, cursor: 'pointer',
-          border: `1.5px solid ${checked === true ? PALETTE.selected : 'var(--dsw-alias-border-l3)'}`,
+          border: `1.5px solid ${checked === true ? PALETTE.selected : '#C4B9A4'}`,
           background: checked === true ? PALETTE.selected : 'transparent',
           color: checked === true ? '#fff' : 'transparent',
           fontSize: 10, lineHeight: 1, fontFamily: 'inherit',
@@ -1899,10 +1905,10 @@ window.__ModuleLoader__.load({
           borderRadius: 10,
           padding: 0,
           display: 'flex', flexDirection: 'column',
-          background: 'var(--dsw-alias-card-fill)',
+          background: hasAccent ? cardFill(accent) : PAPER.fill,
           border: `${isHighlight ? 2 : 1}px solid ${isHighlight
             ? '#C47B2C'
-            : isSelected || isEditing ? 'var(--dsw-alias-border-selected)' : 'var(--dsw-alias-border-l2)'}`,
+            : isSelected || isEditing ? PALETTE.selected : PAPER.border}`,
           boxShadow: isSelected || isEditing || isHighlight
             ? '0 4px 16px var(--dsw-alias-bg-mask-2)'
             : '0 1px 4px var(--dsw-alias-bg-mask-2)',
@@ -1918,8 +1924,8 @@ window.__ModuleLoader__.load({
             flex: '0 0 auto', display: 'flex', alignItems: 'center',
             height: showTitleBand ? Math.max(26, 30 * scale) : Math.max(5, 7 * scale),
             padding: showTitleBand ? `0 ${12 * scale}px` : 0,
-            background: hasAccent ? accentStripe : 'var(--dsw-alias-bg-layer-2)',
-            color: hasAccent ? '#ffffff' : 'var(--dsw-alias-label-primary)',
+            background: hasAccent ? accentStripe : PAPER.band,
+            color: hasAccent ? '#ffffff' : PAPER.title,
           },
         }, showTitleBand ? h('div', {
           style: {
@@ -1936,14 +1942,14 @@ window.__ModuleLoader__.load({
             flex: '1 1 auto', minHeight: 0,
             padding: bodyPadding,
             fontSize: bodyFont, lineHeight: 1.45,
-            color: 'var(--dsw-alias-label-secondary)',
+            color: hasAccent ? PALETTE.body[mode()] : PAPER.body,
           },
           ref: (element) => {
             if (element === null) textRefs.current.delete(node.id)
             else textRefs.current.set(node.id, element)
           },
         }, bodyText === ''
-          ? h('span', { style: { color: 'var(--dsw-alias-label-tertiary)', fontStyle: 'italic', opacity: 0.8 } }, t('notePlaceholder'))
+          ? h('span', { style: { color: PAPER.meta, fontStyle: 'italic', opacity: 0.9 } }, t('notePlaceholder'))
           : renderRichText(noteBlocks(node, bodyText), `n-${node.id}`,
             (index) => onToggleTask?.(node.id, index))) : null
 
