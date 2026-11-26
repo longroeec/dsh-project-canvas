@@ -1556,7 +1556,7 @@ window.__ModuleLoader__.load({
           if (hover === node.id && pendingLink.sourceId !== node.id) {
             anchors = ANCHORS.map((anchor) => anchorDot(anchor, pendingLink.relationType))
           }
-        } else if (isSelected && selection.length === 1 && !isEditing) {
+        } else if (!isEditing && (hover === node.id || (isSelected && selection.length === 1))) {
           anchors = ANCHORS.map((anchor) => anchorDot(anchor, 'MainThick1', node, (picked) => onBeginLink(node, picked)))
         }
 
