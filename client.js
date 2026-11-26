@@ -466,11 +466,12 @@ window.__ModuleLoader__.load({
       Bottom: { x: 0, y: 1 },
       Left: { x: -1, y: 0 },
     }
+    // Link anchors sit outside the border so the resize handles on the border stay reachable.
     const ANCHOR_PLACEMENT = {
-      Top: { left: '50%', top: -5, marginLeft: -5 },
-      Right: { right: -5, top: '50%', marginTop: -5 },
-      Bottom: { left: '50%', bottom: -5, marginLeft: -5 },
-      Left: { left: -5, top: '50%', marginTop: -5 },
+      Top: { left: '50%', top: -16, marginLeft: -5 },
+      Right: { right: -16, top: '50%', marginTop: -5 },
+      Bottom: { left: '50%', bottom: -16, marginLeft: -5 },
+      Left: { left: -16, top: '50%', marginTop: -5 },
     }
 
     const anchorFor = (anchor, node) => (ANCHOR_POINT[anchor] ?? ANCHOR_POINT.Right)(node)
@@ -519,7 +520,7 @@ window.__ModuleLoader__.load({
 
     /** Resize handle under a screen point of the selected node, if any. */
     function hitResizeHandle(node, world, zoom) {
-      const threshold = 8 / Math.max(0.001, zoom)
+      const threshold = 10 / Math.max(0.001, zoom)
       const left = node.x
       const right = node.x + node.width
       const top = node.y
@@ -994,12 +995,8 @@ window.__ModuleLoader__.load({
         if (selection.length === 1) {
           const node = nodes.find((candidate) => candidate.id === selection[0])
           if (node !== undefined) {
-            const anchor = hitAnchor(node, world, camera.zoom)
-            if (anchor !== undefined) {
-              event.stopPropagation()
-              onBeginLink(node, anchor)
-              return
-            }
+            // Resize wins over link anchors on the border: the dots keep their own hit area at
+            // the edge midpoints, so dragging along an edge or a corner shapes the card.
             const handle = hitResizeHandle(node, world, camera.zoom)
             if (handle !== undefined) {
               event.stopPropagation()
@@ -1008,6 +1005,12 @@ window.__ModuleLoader__.load({
                 origin: { x: event.clientX, y: event.clientY, node },
               }
               capture(event)
+              return
+            }
+            const anchor = hitAnchor(node, world, camera.zoom)
+            if (anchor !== undefined) {
+              event.stopPropagation()
+              onBeginLink(node, anchor)
               return
             }
           }
