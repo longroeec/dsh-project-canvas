@@ -2264,10 +2264,10 @@ window.__ModuleLoader__.load({
           nodes: current.nodes.map((node) => node.id === nodeId ? { ...node, ...box } : node),
         })
         if (done !== true) return
-        commit(() => mutate('update-node-box', { nodeId, ...box }), {
+        commit(() => mutate('update-note', { nodeId, ...box }), {
           history: previous === undefined ? undefined : () => ({
-            undo: () => mutate('update-node-box', { nodeId, ...previous }),
-            redo: () => mutate('update-node-box', { nodeId, ...box }),
+            undo: () => mutate('update-note', { nodeId, ...previous }),
+            redo: () => mutate('update-note', { nodeId, ...box }),
           }),
         })
       }, [commit])
@@ -2774,14 +2774,14 @@ window.__ModuleLoader__.load({
           const final = wheelNode.current
           wheelNode.current = undefined
           if (final === undefined) return
-          commit(() => mutate('update-node-box', {
+          commit(() => mutate('update-note', {
             nodeId: final.id, x: final.x, y: final.y, width, height,
           }), {
             history: () => ({
-              undo: () => mutate('update-node-box', {
+              undo: () => mutate('update-note', {
                 nodeId: final.id, x: final.x, y: final.y, width: final.width, height: final.height,
               }),
-              redo: () => mutate('update-node-box', { nodeId: final.id, x: final.x, y: final.y, width, height }),
+              redo: () => mutate('update-note', { nodeId: final.id, x: final.x, y: final.y, width, height }),
             }),
           })
         }, 450)
