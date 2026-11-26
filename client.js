@@ -456,14 +456,10 @@ window.__ModuleLoader__.load({
           : block.k === 'ol'
             ? h('span', { style: markerStyle }, `${ordinal}.`)
             : block.k === 'task'
-              ? h('span', {
-                role: 'checkbox',
-                'aria-checked': block.c === true,
-                title: block.c === true ? t('taskDone') : t('taskOpen'),
-                onPointerDown: (event) => event.stopPropagation(),
-                onClick: (event) => { event.stopPropagation(); onToggleTask?.(index) },
-                style: { ...markerStyle, cursor: 'pointer', fontSize: 12 },
-              }, block.c === true ? '☑' : '☐')
+              ? checkboxBox(
+                block.c === true,
+                () => onToggleTask?.(index),
+                block.c === true ? t('taskDone') : t('taskOpen'))
               : null
         return h('div', {
           key: `${keyPrefix}-line-${index}`,
@@ -789,6 +785,28 @@ window.__ModuleLoader__.load({
       },
     }, label)
 
+    /** A real checkbox: rounded square, filled accent when done, tick inside. */
+    function checkboxBox(checked, onToggle, title) {
+      return h('button', {
+        type: 'button',
+        role: 'checkbox',
+        'aria-checked': checked === true,
+        title,
+        onPointerDown: (event) => { event.preventDefault(); event.stopPropagation() },
+        onClick: (event) => { event.stopPropagation(); onToggle() },
+        style: {
+          flex: '0 0 auto', width: 16, height: 16, marginTop: 3, padding: 0,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: 4, cursor: 'pointer',
+          border: `1.5px solid ${checked === true ? PALETTE.selected : 'var(--dsw-alias-border-l3)'}`,
+          background: checked === true ? PALETTE.selected : 'transparent',
+          color: checked === true ? '#fff' : 'transparent',
+          fontSize: 10, lineHeight: 1, fontFamily: 'inherit',
+          transition: 'background 120ms ease, border-color 120ms ease',
+        },
+      }, '✓')
+    }
+
     // --------------------------------------------------------- rich body editor
 
     const HTML_ESCAPE = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }
@@ -878,15 +896,10 @@ window.__ModuleLoader__.load({
         if (block.k === 'ul') return h('span', { style: base }, '•')
         if (block.k === 'ol') return h('span', { style: base }, `${ordinal}.`)
         if (block.k === 'task') {
-          return h('button', {
-            type: 'button',
-            'aria-checked': block.c === true,
-            role: 'checkbox',
-            onPointerDown: (event) => event.preventDefault(),
-            onClick: () => publish(live.current.map((entry, position) => (position === activeIndex.current && entry.k === 'task'
-              ? { ...entry, c: entry.c !== true } : entry))),
-            style: { ...base, border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', fontSize: 13 },
-          }, block.c === true ? '☑' : '☐')
+          return checkboxBox(block.c === true, () => {
+            publish(live.current.map((entry, position) => (position === activeIndex.current && entry.k === 'task'
+              ? { ...entry, c: entry.c !== true } : entry)))
+          }, block.c === true ? t('taskDone') : t('taskOpen'))
         }
         return h('span', { style: { ...base, minWidth: 14 } }, '')
       }
@@ -1011,7 +1024,7 @@ window.__ModuleLoader__.load({
       const toolbar = h('div', {
         style: {
           display: 'flex', alignItems: 'center', gap: 2, flex: '0 0 auto',
-          padding: '4px 10px', borderTop: '1px solid var(--dsw-alias-border-l2)',
+          padding: '6px 12px', borderTop: '1px solid var(--dsw-alias-border-l2)',
           background: 'var(--dsw-alias-bg-layer-2)',
         },
       },
@@ -1076,7 +1089,7 @@ window.__ModuleLoader__.load({
           style: {
             flex: '1 1 auto', minWidth: 0, overflowY: 'auto',
             display: 'flex', flexDirection: 'column', gap: 2,
-            cursor: 'text', paddingBottom: 24,
+            cursor: 'text', padding: '12px 14px 24px',
           },
         }, rows),
         toolbar)
@@ -2265,7 +2278,7 @@ window.__ModuleLoader__.load({
       }, '×')),
 
       h('div', {
-        style: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '12px 14px 0' },
+        style: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' },
       }, h(RichBodyEditor, {
         initialText: editing.body,
         onChange: (text) => onEditValue('body', text),
@@ -2277,7 +2290,7 @@ window.__ModuleLoader__.load({
       h('div', {
         style: {
           display: 'flex', alignItems: 'center', gap: 8, flex: '0 0 auto',
-          padding: '8px 12px', borderTop: '1px solid var(--dsw-alias-border-l2)',
+          padding: '8px 12px',
           background: 'var(--dsw-alias-bg-layer-2)',
         },
       },
