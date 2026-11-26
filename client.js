@@ -50,6 +50,9 @@ window.__ModuleLoader__.load({
         create: 'Create',
         noDatabase: 'Project Canvas database was not found. Open the Project Canvas desktop app once, then try again.',
         noProjects: 'No Project Canvas projects yet. Create one here, or in the desktop app.',
+        boldTool: 'Bold', italicTool: 'Italic', strikeTool: 'Strikethrough', codeTool: 'Inline code',
+        bulletTool: 'Bullet list', orderedTool: 'Numbered list', taskTool: 'Checklist',
+        clearFormat: 'Clear list mark',
         taskDone: 'Mark as not done',
         taskOpen: 'Mark as done',
         importLegacy: 'Import desktop data',
@@ -150,6 +153,9 @@ window.__ModuleLoader__.load({
         create: '创建',
         noDatabase: '没有找到 Project Canvas 数据库。请先打开一次桌面端 Project Canvas，再重试。',
         noProjects: '还没有 Project Canvas 项目。可以在这里新建，或在桌面端创建。',
+        boldTool: '加粗', italicTool: '斜体', strikeTool: '删除线', codeTool: '行内代码',
+        bulletTool: '项目符号', orderedTool: '编号列表', taskTool: '复选框列表',
+        clearFormat: '清除列表标记',
         taskDone: '标记为未完成',
         taskOpen: '标记为完成',
         importLegacy: '从桌面端导入',
@@ -1754,25 +1760,39 @@ window.__ModuleLoader__.load({
         })
       }
 
-      const applyBullet = () => {
+      /** Prefix (or clear) the list marker on every line the caret or selection touches. */
+      const applyList = (kind) => {
         if (editing === undefined) return
         const value = editing.body
         const area = bodyRef.current
-        if (area === null) return
-        const start = area.selectionStart ?? 0
-        const end = area.selectionEnd ?? 0
-        const lineStart = value.lastIndexOf('\n', Math.max(0, start - 1)) + 1
-        const slice = value.slice(lineStart, end)
-        const bulleted = slice.split('\n')
-          .map((line) => (line.startsWith('- ') ? line : `- ${line}`))
-          .join('\n')
-        onEditValue('body', `${value.slice(0, lineStart)}${bulleted}${value.slice(end)}`)
+        const start = area === null ? value.length : (area.selectionStart ?? value.length)
+        const end = area === null ? start : (area.selectionEnd ?? start)
+        const from = value.lastIndexOf('\n', Math.max(0, start - 1)) + 1
+        const to = value.indexOf('\n', end) === -1 ? value.length : value.indexOf('\n', end)
+        const lines = value.slice(from, to).split('\n')
+        const PREFIX = /^([-*+]\s+\[[ xX]\]\s+|[-*+]\s+|\d{1,9}[.)]\s+)/
+        const already = kind !== 'none' && lines.every((line) => {
+          const rest = line.replace(/^\s*/, '')
+          if (kind === 'ul') return /^[-*+]\s+/.test(rest) && !/^[-*+]\s+\[/.test(rest)
+          if (kind === 'task') return /^[-*+]\s+\[[ xX]\]/.test(rest)
+          return /^\d{1,9}[.)]\s+/.test(rest)
+        })
+        let ordinal = 0
+        const next = lines.map((line) => {
+          const indent = /^\s*/.exec(line)[0]
+          const rest = line.slice(indent.length).replace(PREFIX, '')
+          ordinal += 1
+          if (kind === 'none' || already) return `${indent}${rest}`
+          if (kind === 'ol') return `${indent}${ordinal}. ${rest}`
+          if (kind === 'task') return `${indent}- [ ] ${rest}`
+          return `${indent}- ${rest}`
+        }).join('\n')
+        onEditValue('body', value.slice(0, from) + next + value.slice(to))
         requestAnimationFrame(() => {
           const target = bodyRef.current
           if (target === null) return
           target.focus()
-          const caret = lineStart + bulleted.length
-          target.setSelectionRange(caret, caret)
+          target.setSelectionRange(from, from + next.length)
         })
       }
 
@@ -1789,6 +1809,26 @@ window.__ModuleLoader__.load({
           ...options.style,
         },
       }, label)
+
+      // A small formatting row above the colours: the list markers are the discoverable entry
+      // point, and the inline marks already existed in the renderer but had no button.
+      const editorToolbar = editing === undefined ? null : h('div', {
+        'data-editor-toolbar': true,
+        style: {
+          display: 'flex', alignItems: 'center', gap: 2, flex: '0 0 auto',
+          padding: '4px 10px', borderTop: '1px solid var(--dsw-alias-border-l2)',
+          background: 'var(--dsw-alias-bg-layer-2)',
+        },
+      },
+      toolButton('B', t('boldTool'), () => applyInline('**', '**'), { style: { fontWeight: 700 } }),
+      toolButton('I', t('italicTool'), () => applyInline('*', '*'), { style: { fontStyle: 'italic' } }),
+      toolButton('S', t('strikeTool'), () => applyInline('~~', '~~'), { style: { textDecoration: 'line-through' } }),
+      toolButton('</>', t('codeTool'), () => applyInline('`', '`'), { style: { fontSize: 11 } }),
+      h('span', { style: { width: 1, height: 16, margin: '0 6px', background: 'var(--dsw-alias-border-l2)' } }),
+      toolButton('•', t('bulletTool'), () => applyList('ul')),
+      toolButton('1.', t('orderedTool'), () => applyList('ol')),
+      toolButton('☑', t('taskTool'), () => applyList('task')),
+      toolButton('⟲', t('clearFormat'), () => applyList('none')))
 
       const swatchMenu = editing === undefined || !editorMenu ? null : h('div', {
         'data-editor-menu': true,
@@ -1950,6 +1990,8 @@ window.__ModuleLoader__.load({
           caretColor: PALETTE.selected, fontFamily: 'inherit',
         },
       })),
+
+      editorToolbar,
 
       h('div', {
         style: {
