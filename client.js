@@ -1743,6 +1743,11 @@ window.__ModuleLoader__.load({
 
       const openContextMenu = (event) => {
         event.preventDefault()
+        // A right-click while a link is pending drops the link instead of opening the menu.
+        if (pendingLink !== undefined) {
+          onCancelLink()
+          return
+        }
         const world = toWorld(event.clientX, event.clientY)
         const node = hitNode(world)
         if (node !== undefined && !selected.has(node.id)) onSelectNodes([node.id])
