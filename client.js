@@ -608,8 +608,12 @@ window.__ModuleLoader__.load({
 
     const pathOf = (curve) => `M ${curve.from.x} ${curve.from.y} C ${curve.c1.x} ${curve.c1.y}, ${curve.c2.x} ${curve.c2.y}, ${curve.to.x} ${curve.to.y}`
 
+    /** The default line ink follows the theme: white on a dark board, black on a light one. */
+    const defaultInk = () => (isDark() ? '#ffffff' : '#000000')
+
     function connectionColour(connection) {
       const key = connection.strokeKey
+      if (key === '#000000') return defaultInk()
       if (typeof key === 'string' && key.startsWith('#')) return key
       if (key && PALETTE.stripes[mode()][key]) return PALETTE.stripes[mode()][key]
       return PALETTE.relationColour[connection.relationType] ?? PALETTE.stripe
@@ -1447,7 +1451,10 @@ window.__ModuleLoader__.load({
         const from = anchorFor(pendingLink.anchor, source)
         return h('path', {
           d: `M ${from.x} ${from.y} L ${pointer.x} ${pointer.y}`,
-          fill: 'none', stroke: PALETTE.relationColour[pendingLink.relationType] ?? PALETTE.selected,
+          fill: 'none', stroke: pendingLink.strokeKey === '#000000'
+            ? defaultInk()
+            : (PALETTE.stripes[mode()][pendingLink.strokeKey]
+              ?? PALETTE.relationColour[pendingLink.relationType] ?? PALETTE.selected),
           strokeWidth: PALETTE.relationWidth[pendingLink.relationType] ?? 1.6,
           strokeDasharray: PALETTE.relationDash[pendingLink.relationType],
           opacity: 0.85, style: { pointerEvents: 'none' },
@@ -3290,7 +3297,7 @@ window.__ModuleLoader__.load({
       }),
       t(`relation_${relation}`)))
       const swatches = [h(Swatch, {
-        key: '#000000', colour: '#000000', selected: strokeKey === '#000000', title: t('defaultColour'),
+        key: '#000000', colour: defaultInk(), selected: strokeKey === '#000000', title: t('defaultColour'),
         onClick: () => setStrokeKey('#000000'),
       })].concat(ACCENT_KEYS.map((key) => h(Swatch, {
         key, colour: PALETTE.stripes[mode()][key], selected: strokeKey === key, title: accentLabel(key),
