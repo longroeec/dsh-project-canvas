@@ -50,6 +50,8 @@ window.__ModuleLoader__.load({
         create: 'Create',
         noDatabase: 'Project Canvas database was not found. Open the Project Canvas desktop app once, then try again.',
         noProjects: 'No Project Canvas projects yet. Create one here, or in the desktop app.',
+        taskDone: 'Mark as not done',
+        taskOpen: 'Mark as done',
         importLegacy: 'Import desktop data',
         imported: 'Imported.',
         storagePath: 'Data file:',
@@ -148,6 +150,8 @@ window.__ModuleLoader__.load({
         create: '创建',
         noDatabase: '没有找到 Project Canvas 数据库。请先打开一次桌面端 Project Canvas，再重试。',
         noProjects: '还没有 Project Canvas 项目。可以在这里新建，或在桌面端创建。',
+        taskDone: '标记为未完成',
+        taskOpen: '标记为完成',
         importLegacy: '从桌面端导入',
         imported: '已导入。',
         storagePath: '数据文件：',
@@ -400,22 +404,77 @@ window.__ModuleLoader__.load({
       })
     }
 
-    /** Whole note body: one block per line, with `- ` lines rendered as bullets. */
-    function renderRichText(text, keyPrefix) {
-      if (text === '') return null
-      return String(text).split('\n').map((line, index) => {
-        const bullet = /^\s*-\s+/.test(line)
-        const content = bullet ? line.replace(/^\s*-\s+/, '') : line
-        return h('div', {
-          key: `${keyPrefix}-line-${index}`,
-          style: { display: 'flex', gap: 5, minHeight: '1em' },
-        },
-        bullet ? h('span', { style: { flex: '0 0 auto', opacity: 0.7 } }, '•') : null,
-        h('span', {
-          style: { flex: '1 1 auto', minWidth: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' },
-        }, renderInline(content, `${keyPrefix}-${index}`)))
+    const BLOCK_TASK = /^(\s*)[-*+]\s+\[([ xX])\]\s?(.*)$/
+    const BLOCK_ORDERED = /^(\s*)(\d{1,9})[.)]\s+(.*)$/
+    const BLOCK_BULLET = /^(\s*)[-*+]\s+(.*)$/
+
+    /** Structured body the Host sent, or the same blocks parsed from its text. */
+    function noteBlocks(node, text) {
+      if (Array.isArray(node.blocks) && node.blocks.length > 0) return node.blocks
+      return parseBlockLines(text)
+    }
+
+    /** Lines of a note as blocks, mirroring lib/blocks.js; the Host normally sends them. */
+    function parseBlockLines(text) {
+      return String(text ?? '').split('\n').map((line) => {
+        const indent = (match) => Math.max(0, Math.floor(match.replace(/\t/g, '  ').length / 2))
+        const task = BLOCK_TASK.exec(line)
+        if (task !== null) {
+          return { k: 'task', t: task[3], i: indent(task[1]), c: task[2].toLowerCase() === 'x' }
+        }
+        const ordered = BLOCK_ORDERED.exec(line)
+        if (ordered !== null) return { k: 'ol', t: ordered[3], i: indent(ordered[1]), n: Number(ordered[2]) }
+        const bullet = BLOCK_BULLET.exec(line)
+        if (bullet !== null) return { k: 'ul', t: bullet[2], i: indent(bullet[1]) }
+        return { k: 'p', t: line, i: 0 }
       })
     }
+
+    /** Whole note body: paragraphs, bullets, numbered lines, and tickable checkboxes. */
+    function renderRichText(blocks, keyPrefix, onToggleTask) {
+      if (blocks.length === 0) return null
+      let ordinal = 0
+      let previous = null
+      return blocks.map((block, index) => {
+        const indent = Math.max(0, Number(block.i) || 0) * 15
+        if (block.k === 'ol') {
+          ordinal = previous !== null && previous.k === 'ol' && previous.i === block.i
+            ? ordinal + 1
+            : (Number(block.n) || 1)
+        } else {
+          ordinal = 0
+        }
+        previous = block
+        const marker = block.k === 'ul'
+          ? h('span', { style: markerStyle }, '•')
+          : block.k === 'ol'
+            ? h('span', { style: markerStyle }, `${ordinal}.`)
+            : block.k === 'task'
+              ? h('span', {
+                role: 'checkbox',
+                'aria-checked': block.c === true,
+                title: block.c === true ? t('taskDone') : t('taskOpen'),
+                onPointerDown: (event) => event.stopPropagation(),
+                onClick: (event) => { event.stopPropagation(); onToggleTask?.(index) },
+                style: { ...markerStyle, cursor: 'pointer', fontSize: 12 },
+              }, block.c === true ? '☑' : '☐')
+              : null
+        return h('div', {
+          key: `${keyPrefix}-line-${index}`,
+          style: { display: 'flex', gap: 5, minHeight: '1em', paddingLeft: indent },
+        },
+        marker,
+        h('span', {
+          style: {
+            flex: '1 1 auto', minWidth: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
+            textDecoration: block.k === 'task' && block.c === true ? 'line-through' : undefined,
+            opacity: block.k === 'task' && block.c === true ? 0.65 : 1,
+          },
+        }, renderInline(block.t, `${keyPrefix}-${index}`)))
+      })
+    }
+
+    const markerStyle = { flex: '0 0 auto', opacity: 0.75, minWidth: 12, userSelect: 'none' }
 
     /** True for a legacy document/media/canvas payload that plain-text editing would destroy. */
     function isStructuredContent(node) {
@@ -715,6 +774,7 @@ window.__ModuleLoader__.load({
       graph, selection, selectedConnection, selectedGroup, editing, pendingLink, focusRequest, highlightId,
       onSelectNodes, onSelectConnection, onSelectGroup, onCreateNote, onMoveNodes, onResizeNode,
       onCommitEdit, onCancelEdit, onEditValue, onBeginEdit, onBeginLink, onCompleteLink, onCancelLink,
+      onToggleTask,
       onOpenConnection, onToggleGroup, onMoveGroup, onCamera, onViewport, onContextMenu, onWheelResize,
       onReconnect, onNewNote, onDeleteNote,
       t,
@@ -1540,7 +1600,8 @@ window.__ModuleLoader__.load({
           },
         }, bodyText === ''
           ? h('span', { style: { color: 'var(--dsw-alias-label-tertiary)', fontStyle: 'italic', opacity: 0.8 } }, t('notePlaceholder'))
-          : renderRichText(bodyText, `n-${node.id}`)) : null
+          : renderRichText(noteBlocks(node, bodyText), `n-${node.id}`,
+            (index) => onToggleTask?.(node.id, index))) : null
 
         const wrapperStyle = {
           position: 'absolute',
@@ -1801,8 +1862,53 @@ window.__ModuleLoader__.load({
         onChange: (event) => onEditValue('title', event.target.value),
         onKeyDown: (event) => {
           event.stopPropagation()
-          if (event.key === 'Escape') { event.preventDefault(); onCancelEdit() }
-          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); onCommitEdit() }
+          if (event.key === 'Escape') { event.preventDefault(); onCancelEdit(); return }
+          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); onCommitEdit(); return }
+          const area = bodyRef.current
+          if (area === null) return
+          const value = editing.body
+          const write = (nextValue, caret) => {
+            onEditValue('body', nextValue)
+            requestAnimationFrame(() => {
+              const target = bodyRef.current
+              if (target === null) return
+              target.focus()
+              target.setSelectionRange(caret, caret)
+            })
+          }
+          if (event.key === 'Tab') {
+            event.preventDefault()
+            const from = value.lastIndexOf('\n', area.selectionStart - 1) + 1
+            const to = value.indexOf('\n', area.selectionEnd) === -1 ? value.length : value.indexOf('\n', area.selectionEnd)
+            const block = value.slice(from, to)
+            const next = block.split('\n')
+              .map((line) => (event.shiftKey ? line.replace(/^ {1,2}/, '') : `  ${line}`))
+              .join('\n')
+            write(value.slice(0, from) + next + value.slice(to), from + next.length)
+            return
+          }
+          if (event.key !== 'Enter' || event.shiftKey) return
+          const lineStart = value.lastIndexOf('\n', area.selectionStart - 1) + 1
+          const line = value.slice(lineStart, area.selectionStart)
+          const task = /^(\s*)([-*+])\s+\[[ xX]\]\s?(.*)$/.exec(line)
+          const ordered = task === null ? /^(\s*)(\d{1,9})([.)])\s+(.*)$/.exec(line) : null
+          const bullet = task === null && ordered === null ? /^(\s*)([-*+])\s+(.*)$/.exec(line) : null
+          const match = task ?? ordered ?? bullet
+          if (match === null) return
+          event.preventDefault()
+          const content = task !== null ? task[3] : ordered !== null ? ordered[4] : bullet[3]
+          if (String(content).trim() === '') {
+            const stripped = match[1]
+            write(value.slice(0, lineStart) + stripped + value.slice(area.selectionStart), lineStart + stripped.length)
+            return
+          }
+          const prefix = task !== null
+            ? `${task[1]}${task[2]} [ ] `
+            : ordered !== null
+              ? `${ordered[1]}${Number(ordered[2]) + 1}${ordered[3]} `
+              : `${bullet[1]}${bullet[2]} `
+          write(`${value.slice(0, area.selectionStart)}\n${prefix}${value.slice(area.selectionEnd)}`,
+            area.selectionStart + 1 + prefix.length)
         },
         style: {
           flex: 1, minWidth: 0, border: 'none', background: 'transparent', outline: 'none',
@@ -2257,6 +2363,26 @@ window.__ModuleLoader__.load({
           }),
         })
       }, [commit])
+
+      /** Tick or untick one checkbox line; the text stays the single source of truth. */
+      const toggleTask = useCallback((nodeId, index) => {
+        const node = graph?.nodes.find((candidate) => candidate.id === nodeId)
+        if (node === undefined) return
+        const lines = String(node.content ?? '').split('\n')
+        const line = lines[index]
+        if (line === undefined || !/\[[ xX]\]/.test(line)) return
+        const before = lines.join('\n')
+        const after = lines.map((entry, position) => (position === index
+          ? entry.replace(/\[([ xX])\]/, (match) => (match === '[x]' ? '[ ]' : '[x]'))
+          : entry)).join('\n')
+        if (after === before) return
+        commit(() => mutate('update-note', { nodeId, content: after }), {
+          history: () => ({
+            undo: () => mutate('update-note', { nodeId, content: before }),
+            redo: () => mutate('update-note', { nodeId, content: after }),
+          }),
+        })
+      }, [graph, commit, mutate])
 
       const resizeNode = useCallback((nodeId, box, done, previous) => {
         setGraph((current) => current === undefined ? current : {
@@ -3079,6 +3205,7 @@ window.__ModuleLoader__.load({
             onCreateNote: createNoteAt,
             onMoveNodes: moveNodes,
             onResizeNode: resizeNode,
+            onToggleTask: toggleTask,
             onBeginEdit: beginEdit,
             onEditValue: (field, value) => setEditing((current) => (current === undefined ? current : { ...current, [field]: value })),
             onCommitEdit: commitEdit,
