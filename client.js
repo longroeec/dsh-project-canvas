@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react')
     const h = React.createElement
-    const { useCallback, useEffect, useRef, useState } = React
+    const { useCallback, useEffect, useLayoutEffect, useRef, useState } = React
 
     const NS = 'projectCanvas'
     const API = '/project-canvas/api'
@@ -1101,7 +1101,7 @@ window.__ModuleLoader__.load({
       graph, selection, selectedConnection, selectedGroup, editing, pendingLink, focusRequest, highlightId,
       onSelectNodes, onSelectConnection, onSelectGroup, onCreateNote, onMoveNodes, onResizeNode,
       onCommitEdit, onCancelEdit, onEditValue, onBeginEdit, onBeginLink, onCompleteLink, onCancelLink,
-      onToggleTask,
+      onToggleTask, onAutoFit,
       onOpenConnection, onToggleGroup, onMoveGroup, onCamera, onViewport, onContextMenu, onWheelResize,
       onReconnect, onNewNote, onDeleteNote,
       t,
@@ -1110,6 +1110,7 @@ window.__ModuleLoader__.load({
       const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 1 })
       const [marquee, setMarquee] = useState(undefined)
       const [hover, setHover] = useState(undefined)
+      const textRefs = useRef(new Map())
       const [pointer, setPointer] = useState(undefined)
       const [space, setSpace] = useState(false)
       const [reconnect, setReconnect] = useState(undefined)
@@ -1338,6 +1339,19 @@ window.__ModuleLoader__.load({
         host.addEventListener('wheel', onWheel, { passive: false })
         return () => host.removeEventListener('wheel', onWheel)
       }, [camera, selection, editingId, nodes, onWheelResize])
+
+      // Notes grow with their text: when the body overflows the card, ask for the taller box.
+      useLayoutEffect(() => {
+        if (zoom < TEXT_MIN_ZOOM) return
+        for (const node of nodes) {
+          if (editing !== undefined && editing.node?.id === node.id) continue
+          const layer = textRefs.current.get(node.id)
+          if (layer === undefined) continue
+          const extra = layer.scrollHeight - layer.clientHeight
+          if (extra <= 2) continue
+          onAutoFit?.(node.id, Math.ceil(node.height + extra / zoom))
+        }
+      })
 
       const capture = (event) => {
         try { hostRef.current?.setPointerCapture(event.pointerId) } catch { /* pointer gone */ }
@@ -1923,7 +1937,10 @@ window.__ModuleLoader__.load({
             padding: bodyPadding,
             fontSize: bodyFont, lineHeight: 1.45,
             color: 'var(--dsw-alias-label-secondary)',
-            maxHeight: bodyFont * 1.45 * (customTitle === '' ? 7 : 6),
+          },
+          ref: (element) => {
+            if (element === null) textRefs.current.delete(node.id)
+            else textRefs.current.set(node.id, element)
           },
         }, bodyText === ''
           ? h('span', { style: { color: 'var(--dsw-alias-label-tertiary)', fontStyle: 'italic', opacity: 0.8 } }, t('notePlaceholder'))
@@ -2699,6 +2716,17 @@ window.__ModuleLoader__.load({
           }),
         })
       }, [commit])
+
+      /** Grow a card to fit its text; silent, so it never floods the undo history. */
+      const autoFitNode = useCallback((nodeId, height) => {
+        const node = graph?.nodes.find((candidate) => candidate.id === nodeId)
+        if (node === undefined || height <= node.height + 1) return
+        setGraph((current) => current === undefined ? current : {
+          ...current,
+          nodes: current.nodes.map((entry) => (entry.id === nodeId ? { ...entry, height } : entry)),
+        })
+        void mutate('update-note', { nodeId, x: node.x, y: node.y, width: node.width, height }).catch(() => {})
+      }, [graph, mutate])
 
       /** Tick or untick one checkbox line; the text stays the single source of truth. */
       const toggleTask = useCallback((nodeId, index) => {
@@ -3542,6 +3570,7 @@ window.__ModuleLoader__.load({
             onMoveNodes: moveNodes,
             onResizeNode: resizeNode,
             onToggleTask: toggleTask,
+            onAutoFit: autoFitNode,
             onBeginEdit: beginEdit,
             onEditValue: (field, value) => setEditing((current) => (current === undefined ? current : { ...current, [field]: value })),
             onCommitEdit: commitEdit,
