@@ -1,0 +1,10 @@
+{
+  "meta": {
+    "title": "Project Canvas",
+    "description": "Open your Project Canvas boards inside DeepSeek Harness, following the desktop app's interaction model. A Canvas icon in the left sidebar, next to Plugins, opens a full page with the projects, boards, notes, groups, and connections stored in the plugin's own database, which imports an existing Project Canvas desktop database on first use. Blank drag pans, Shift+drag marquees, Ctrl+click multi-selects, Ctrl+0 fits. Double-click empty space to create a note centred there; double-click a note (or F2) to edit it in place, with an optional title field stored separately from the body: Ctrl+Enter commits, Esc cancels, clicking away commits, and a note left with no title and no body moves to the recycle bin. Click a selected note's edge dot, pick a line type and colour, then click the target note to connect them; double-click or right-click a connection to edit or delete it, and drag an end of the curve onto another note to reattach it. Group a selection with Ctrl+G, drag a group by its title bar, double-click inside it to fold it, and Delete removes the group while keeping its notes. Wheel resizes a single selected card, Ctrl+wheel zooms (0.1×–4×), Shift+wheel pans horizontally. Search covers the current project (limit 50) and flashes the located note; the recycle bin restores deleted notes with their surviving connections; projects can be created, renamed, and deleted. The agent also receives canvas tools: project_canvas_list, project_canvas_read, project_canvas_search, project_canvas_create_note, project_canvas_update_note, project_canvas_delete_note, project_canvas_connect, project_canvas_connection, project_canvas_group, project_canvas_project, and project_canvas_recycle. Writes go straight to the desktop app's database. Sub-boards are listed but not created or entered from a note, structured document/media notes are read-only as plain text, copy/paste uses an in-memory clipboard, and undo also covers group creation."
+  },
+  "tab": {
+    "title": "Canvas",
+    "guideDescription": "Browse and edit your canvas boards."
+  }
+}

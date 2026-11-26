@@ -1,0 +1,10 @@
+{
+  "meta": {
+    "title": "Project Canvas 画布",
+    "description": "在 DeepSeek Harness 里打开 Project Canvas 画布，交互与桌面端一致。左侧边栏「插件」旁的「画布」图标会打开一个整页，读取插件自己的数据库（首次使用时自动导入已有的 Project Canvas 桌面端数据库）中的项目、画布、便签、分组与连线。空白拖动平移、Shift+拖动框选、Ctrl+点击多选、Ctrl+0 适应内容。双击空白在该处居中新建便签；双击便签（或按 F2）就地编辑，标题与正文是两个独立字段，标题可填可不填：Ctrl+Enter 完成、Esc 取消、点别处自动保存、标题和正文都为空时移入回收站。点选中便签的边缘圆点、选线条类型与颜色后再点目标便签即可连线；双击或右键连线可编辑/删除，把连线末端拖到另一张便签即可改接。Ctrl+G 对选区建分组，拖分组标题栏整体移动，组内双击折叠，Delete 只删分组、保留便签。滚轮缩放选中的单张卡片、Ctrl+滚轮缩放画布（0.1×–4×）、Shift+滚轮横向平移。搜索范围为当前项目（上限 50）并会高亮定位到的便签；回收站可恢复便签及其仍存活的连线；项目可新建、重命名、删除。同时给 Agent 提供画布工具：project_canvas_list、project_canvas_read、project_canvas_search、project_canvas_create_note、project_canvas_update_note、project_canvas_delete_note、project_canvas_connect、project_canvas_connection、project_canvas_group、project_canvas_project、project_canvas_recycle。写操作直接落在桌面端数据库上。局部画布只列出、不能在此创建或由便签进入；文档/素材类结构化便签按只读纯文本显示；复制粘贴使用内存剪贴板；撤销也覆盖分组的创建与删除。"
+  },
+  "tab": {
+    "title": "画布",
+    "guideDescription": "浏览并编辑画布。"
+  }
+}

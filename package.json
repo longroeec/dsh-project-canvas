@@ -1,0 +1,48 @@
+{
+  "name": "dsh-project-canvas",
+  "version": "0.1.0",
+  "description": "Project Canvas boards inside DeepSeek Harness: a pannable, editable canvas page and canvas tools for the agent.",
+  "type": "module",
+  "license": "MIT",
+  "author": "longroeec <longroeec@outlook.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/longroeec/dsh-project-canvas.git"
+  },
+  "homepage": "https://github.com/longroeec/dsh-project-canvas#readme",
+  "bugs": {
+    "url": "https://github.com/longroeec/dsh-project-canvas/issues"
+  },
+  "keywords": ["dsh", "deepseek-harness", "canvas", "notes", "project-canvas"],
+  "engines": {
+    "dsh": ">=0.2.2-rc.5 <1.0.0"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "README.md",
+    "LICENSE",
+    "docs",
+    "icon.svg"
+  ],
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ]
+    }
+  }
+}
