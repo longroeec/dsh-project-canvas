@@ -1,26 +1,53 @@
 {
   "format": 1,
-  "title": { "en": "longroeec plugins", "zh": "longroeec 插件" },
+  "title": {
+    "en": "longroeec plugins",
+    "zh": "longroeec 插件"
+  },
   "description": {
     "en": "Small DeepSeek Harness bundles.",
     "zh": "一些 DeepSeek Harness 插件。"
   },
   "metadata": {
     "categories": {
-      "productivity": { "title": { "en": "Productivity", "zh": "效率" } }
+      "productivity": {
+        "title": {
+          "en": "Productivity",
+          "zh": "效率"
+        }
+      }
     },
     "labels": {
-      "canvas": { "title": { "en": "Canvas", "zh": "画布" } },
-      "notes": { "title": { "en": "Notes", "zh": "笔记" } }
+      "canvas": {
+        "title": {
+          "en": "Canvas",
+          "zh": "画布"
+        }
+      },
+      "notes": {
+        "title": {
+          "en": "Notes",
+          "zh": "笔记"
+        }
+      }
     },
     "sortKeys": {
-      "stars": { "title": { "en": "Stars", "zh": "星标" }, "order": "desc" }
+      "stars": {
+        "title": {
+          "en": "Stars",
+          "zh": "星标"
+        },
+        "order": "desc"
+      }
     }
   },
   "plugins": [
     {
       "name": "dsh-project-canvas",
-      "title": { "en": "Project Canvas", "zh": "Project Canvas 画布" },
+      "title": {
+        "en": "Project Canvas",
+        "zh": "Project Canvas 画布"
+      },
       "description": {
         "en": "Editable canvas boards with notes, connections, groups, search, recycle bin, and agent tools.",
         "zh": "可编辑的画布便签：连线、分组、搜索、回收站，以及 Agent 工具。"
@@ -28,18 +55,31 @@
       "icon": "https://raw.githubusercontent.com/longroeec/dsh-project-canvas/main/icon.svg",
       "author": "longroeec",
       "homepage": "https://github.com/longroeec/dsh-project-canvas",
-      "repository": { "url": "https://github.com/longroeec/dsh-project-canvas" },
+      "repository": {
+        "url": "https://github.com/longroeec/dsh-project-canvas"
+      },
       "metadata": {
         "category": "productivity",
-        "keywords": ["canvas", "notes", "project-canvas"],
-        "labels": ["canvas", "notes"],
-        "sortKeys": { "stars": 0 }
+        "keywords": [
+          "canvas",
+          "notes",
+          "project-canvas"
+        ],
+        "labels": [
+          "canvas",
+          "notes"
+        ],
+        "sortKeys": {
+          "stars": 0
+        }
       },
       "versions": [
         {
           "version": "0.1.0",
           "publishTimestamp": 1795690329,
-          "engines": { "dsh": ">=0.2.2-rc.5 <1.0.0" },
+          "engines": {
+            "dsh": ">=0.2.2-rc.5 <1.0.0"
+          },
           "source": {
             "type": "git",
             "url": "https://github.com/longroeec/dsh-project-canvas",
@@ -49,11 +89,25 @@
         {
           "version": "0.1.1",
           "publishTimestamp": 1795700579,
-          "engines": { "dsh": ">=0.2.2-rc.5 <1.0.0" },
+          "engines": {
+            "dsh": ">=0.2.2-rc.5 <1.0.0"
+          },
           "source": {
             "type": "git",
             "url": "https://github.com/longroeec/dsh-project-canvas",
             "commit": "538517516ff564c5fe44ba567342e629fd53542f"
+          }
+        },
+        {
+          "version": "0.1.2",
+          "publishTimestamp": 1795701855,
+          "engines": {
+            "dsh": ">=0.2.2-rc.5 <1.0.0"
+          },
+          "source": {
+            "type": "git",
+            "url": "https://github.com/longroeec/dsh-project-canvas",
+            "commit": "103931f449e9c3b76afbd444ca9638554cb89593"
           }
         }
       ]
