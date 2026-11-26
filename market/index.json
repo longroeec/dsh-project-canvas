@@ -217,6 +217,18 @@
             "url": "https://github.com/longroeec/dsh-project-canvas",
             "commit": "04c0e1ccf1302913b3bb9b6dd420b6fd81718325"
           }
+        },
+        {
+          "version": "0.3.5",
+          "publishTimestamp": 1795704312,
+          "engines": {
+            "dsh": ">=0.2.2-rc.5 <1.0.0"
+          },
+          "source": {
+            "type": "git",
+            "url": "https://github.com/longroeec/dsh-project-canvas",
+            "commit": "e0823eb69f8ef2598a4c065a617302bad76aa151"
+          }
         }
       ]
     }
