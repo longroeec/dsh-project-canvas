@@ -1554,7 +1554,9 @@ window.__ModuleLoader__.load({
           }
         } else if (pendingLink !== undefined) {
           if (hover === node.id && pendingLink.sourceId !== node.id) {
-            anchors = ANCHORS.map((anchor) => anchorDot(anchor, pendingLink.relationType))
+            anchors = ANCHORS.map((anchor) => anchorDot(
+              anchor, pendingLink.relationType, node,
+              () => onCompleteLink(node, anchorFor(anchor, node))))
           }
         } else if (!isEditing && (hover === node.id || (isSelected && selection.length === 1))) {
           anchors = ANCHORS.map((anchor) => anchorDot(anchor, 'MainThick1', node, (picked) => onBeginLink(node, picked)))
@@ -1585,6 +1587,11 @@ window.__ModuleLoader__.load({
           onPointerDown: (event) => {
             if (event.button !== 0 || editing !== undefined) return
             event.stopPropagation()
+            if (pendingLink !== undefined) {
+              if (pendingLink.sourceId === node.id) onCancelLink()
+              else onCompleteLink(node, toWorld(event.clientX, event.clientY))
+              return
+            }
             const additive = event.metaKey || event.ctrlKey
             let next
             if (additive) {
@@ -2279,10 +2286,8 @@ window.__ModuleLoader__.load({
 
       const beginLink = useCallback((node, anchor) => {
         setSelection([node.id])
-        setConnectionDraft({
-          mode: 'create', sourceId: node.id, anchor,
-          relationType: 'MainThick1', strokeKey: '#000000', label: '',
-        })
+        setConnectionDraft(undefined)
+        setPendingLink({ sourceId: node.id, anchor, relationType: 'MainThick1', strokeKey: '#000000' })
       }, [])
 
       const completeLink = useCallback((target, world) => {
