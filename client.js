@@ -2783,7 +2783,8 @@ window.__ModuleLoader__.load({
       }
 
       if (projects.length === 0) {
-        return h('div', {
+        return h(React.Fragment, null,
+        h('div', {
           style: {
             height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center',
             justifyContent: 'center', gap: 10, padding: 24, textAlign: 'center',
@@ -2794,7 +2795,12 @@ window.__ModuleLoader__.load({
         h('div', { style: { fontSize: 12, maxWidth: 380, lineHeight: 1.6 } }, t('noProjects')),
         h(Button, { primary: true, onClick: () => openCreateProject() }, t('newProject')),
         storage?.legacyAvailable ? h(Button, { onClick: () => importLegacy() }, t('importLegacy')) : null,
-        h(Button, { onClick: () => { void loadBootstrap({ resetSelection: true }) } }, t('refresh')))
+        h(Button, { onClick: () => { void loadBootstrap({ resetSelection: true }) } }, t('refresh'))),
+        projectDraft === undefined ? null : h(ProjectDialog, {
+          key: 'project', t, draft: projectDraft,
+          onCancel: () => setProjectDraft(undefined),
+          onSave: saveProjectDraft,
+        }))
       }
 
       // ---- header -----------------------------------------------------------
