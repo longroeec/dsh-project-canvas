@@ -1,6 +1,6 @@
 {
   "name": "dsh-project-canvas",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Project Canvas boards inside DeepSeek Harness: a pannable, editable canvas page and canvas tools for the agent.",
   "type": "module",
   "license": "MIT",
