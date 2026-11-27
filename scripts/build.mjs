@@ -15,5 +15,7 @@ await build({
   platform: 'browser',
   external: ['react'],
   legalComments: 'none',
+  minify: true,
+  define: { 'process.env.NODE_ENV': '"production"' },
   logLevel: 'info',
 })
