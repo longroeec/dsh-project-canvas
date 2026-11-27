@@ -10,6 +10,7 @@ import {
   $getRoot,
   $isElementNode,
   $isParagraphNode,
+  $getNearestNodeFromDOMNode,
   $isTextNode,
   FORMAT_TEXT_COMMAND,
   IS_BOLD,
@@ -45,11 +46,12 @@ const CSS = `
 .pc-editable li { margin: 0; }
 .pc-editable li::marker { color: var(--dsw-alias-label-tertiary); }
 .pc-editable code { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.94em; background: var(--dsw-alias-bg-layer-3); border-radius: 4px; padding: 0 3px; }
-.pc-editable ul[data-list-type="check"] { list-style: none; padding-left: 4px; }
-.pc-editable ul[data-list-type="check"] > li { display: flex; align-items: flex-start; gap: 6px; }
-.pc-editable ul[data-list-type="check"] > li::before { content: ''; flex: 0 0 auto; width: 15px; height: 15px; margin-top: 3px; border-radius: 4px; border: 1.5px solid #C4B9A4; }
-.pc-editable ul[data-list-type="check"] > li[aria-checked="true"]::before { background: #3B7A57; border-color: #3B7A57; }
-.pc-editable ul[data-list-type="check"] > li[aria-checked="true"] { opacity: 0.7; text-decoration: line-through; }
+.pc-editable ul { list-style: none; }
+.pc-editable ul:not(:has(> li[role="checkbox"])) { list-style: disc; }
+.pc-editable li[role="checkbox"] { position: relative; padding-left: 22px; }
+.pc-editable li[role="checkbox"]::before { content: ''; position: absolute; left: 3px; top: 4px; width: 15px; height: 15px; border-radius: 4px; border: 1.5px solid #C4B9A4; cursor: pointer; }
+.pc-editable li[role="checkbox"][aria-checked="true"]::before { background: #3B7A57; border-color: #3B7A57; }
+.pc-editable li[role="checkbox"][aria-checked="true"] { opacity: 0.72; text-decoration: line-through; }
 .pc-toolbar { display: flex; align-items: center; gap: 2px; padding: 6px 12px; border-top: 1px solid var(--dsw-alias-border-l2); background: var(--dsw-alias-bg-layer-2); }
 .pc-tool { min-width: 30px; height: 26px; padding: 0 6px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 13px; cursor: pointer; }
 .pc-tool:hover { background: var(--dsw-alias-bg-layer-3); }
@@ -223,6 +225,21 @@ export function mountBodyEditor(container, { initialText, onChange, onCommit, on
     button('☑', t('taskTool'), () => editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined)),
   )
 
+  const onClick = (event) => {
+    const target = event.target
+    if (!(target instanceof Element)) return
+    const item = target.closest('li[role="checkbox"]')
+    if (item === null) return
+    const box = item.getBoundingClientRect()
+    if (event.clientX - box.left > 24) return
+    event.preventDefault()
+    editor.update(() => {
+      const node = $getNearestNodeFromDOMNode(item)
+      if ($isListItemNode(node)) node.setChecked(node.getChecked() !== true)
+    })
+  }
+  editable.addEventListener('click', onClick)
+
   const onKeyDown = (event) => {
     event.stopPropagation()
     if (event.key === 'Escape') {
@@ -247,6 +264,7 @@ export function mountBodyEditor(container, { initialText, onChange, onCommit, on
     },
     destroy() {
       editable.removeEventListener('keydown', onKeyDown)
+      editable.removeEventListener('click', onClick)
       for (const off of unregister) {
         if (typeof off === 'function') off()
       }
