@@ -13,7 +13,13 @@
   "bugs": {
     "url": "https://github.com/longroeec/dsh-project-canvas/issues"
   },
-  "keywords": ["dsh", "deepseek-harness", "canvas", "notes", "project-canvas"],
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "canvas",
+    "notes",
+    "project-canvas"
+  ],
   "engines": {
     "dsh": ">=0.2.2-rc.5 <1.0.0"
   },
@@ -24,8 +30,8 @@
     "./icon": "./icon.svg"
   },
   "files": [
-    "index.js",
     "client.js",
+    "index.js",
     "lib",
     "cordis.patch.yml",
     "locale/*.json",
@@ -35,7 +41,9 @@
     "icon.svg"
   ],
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "platform": "web",
       "immediately": true,
@@ -44,5 +52,17 @@
         "@deepseek-ai/dsh-client-ui-sidebar"
       ]
     }
+  },
+  "devDependencies": {
+    "@lexical/history": "^0.53.0",
+    "@lexical/list": "^0.53.0",
+    "@lexical/rich-text": "^0.53.0",
+    "@lexical/selection": "^0.53.0",
+    "@lexical/utils": "^0.53.0",
+    "esbuild": "^0.28.2",
+    "lexical": "^0.53.0"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs"
   }
 }
