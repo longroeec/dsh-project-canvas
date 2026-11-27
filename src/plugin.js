@@ -1707,8 +1707,8 @@ export function createClient(React) {
             flex: '0 0 auto', display: 'flex', alignItems: 'center',
             height: showTitleBand ? Math.max(26, 30 * scale) : Math.max(5, 7 * scale),
             padding: showTitleBand ? `0 ${12 * scale}px` : 0,
-            background: hasAccent ? accentStripe : 'var(--dsw-alias-bg-layer-2)',
-            color: hasAccent ? '#ffffff' : 'var(--dsw-alias-label-primary)',
+            background: 'transparent',
+            color: 'var(--dsw-alias-label-primary)',
           },
         }, showTitleBand ? h('div', {
           style: {
@@ -1718,7 +1718,7 @@ export function createClient(React) {
           },
         }, customTitle) : null) : null
         const bodyFont = 11 * Math.max(0.75, zoom)
-        const bodyPadding = `${(showTitleBand ? 8 : 10) * scale}px ${12 * scale}px ${10 * scale}px`
+        const bodyPadding = `${(showTitleBand ? 10 : 12) * scale}px ${16 * scale}px ${14 * scale}px`
         const textLayer = showText ? h('div', {
           style: {
             position: 'relative', overflow: 'hidden',

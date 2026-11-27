@@ -1,7 +1,7 @@
 /**
- * Text ⇄ blocks for the editor.
+ * Text ⇄ blocks for the editor (document version 2).
  *
- * The note keeps its mark-carrying text (see `lib/blocks.js`); the editor parses that text into
+ * Mirrors `lib/blocks.js`: the note keeps its mark-carrying text, the editor parses that text into
  * line blocks, hands them to Lexical, and writes them back the same way, so storage, tools, and
  * search never learn about the editor.
  */
@@ -9,21 +9,61 @@
 export const TASK_LINE = /^(\s*)[-*+]\s+\[([ xX])\]\s?(.*)$/
 export const ORDERED_LINE = /^(\s*)(\d{1,9})[.)]\s+(.*)$/
 export const BULLET_LINE = /^(\s*)[-*+]\s+(.*)$/
+export const HEADING_LINE = /^(#{1,3})\s+(.*)$/
+export const QUOTE_LINE = /^\s*>\s?(.*)$/
+export const DIVIDER_LINE = /^\s*(-{3,}|\*{3,}|_{3,})\s*$/
+export const FENCE_LINE = /^\s*```(\S*)\s*$/
 
 const indentOf = (leading) => Math.max(0, Math.floor(String(leading ?? '').replace(/\t/g, '  ').length / 2))
 
 export function parseBlocks(text) {
-  return String(text ?? '').split('\n').map((line) => {
+  const lines = String(text ?? '').split('\n')
+  const blocks = []
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]
+    const fence = FENCE_LINE.exec(line)
+    if (fence !== null) {
+      const body = []
+      index += 1
+      while (index < lines.length && !FENCE_LINE.test(lines[index])) {
+        body.push(lines[index])
+        index += 1
+      }
+      blocks.push({ k: 'code', t: body.join('\n'), i: 0, lang: fence[1] })
+      continue
+    }
+    const heading = HEADING_LINE.exec(line)
+    if (heading !== null) {
+      blocks.push({ k: `h${heading[1].length}`, t: heading[2], i: 0 })
+      continue
+    }
+    const quote = QUOTE_LINE.exec(line)
+    if (quote !== null) {
+      blocks.push({ k: 'quote', t: quote[1], i: 0 })
+      continue
+    }
+    if (DIVIDER_LINE.test(line)) {
+      blocks.push({ k: 'divider', t: '', i: 0 })
+      continue
+    }
     const task = TASK_LINE.exec(line)
     if (task !== null) {
-      return { k: 'task', t: task[3], i: indentOf(task[1]), c: task[2].toLowerCase() === 'x' }
+      blocks.push({ k: 'task', t: task[3], i: indentOf(task[1]), c: task[2].toLowerCase() === 'x' })
+      continue
     }
     const ordered = ORDERED_LINE.exec(line)
-    if (ordered !== null) return { k: 'ol', t: ordered[3], i: indentOf(ordered[1]), n: Number(ordered[2]) }
+    if (ordered !== null) {
+      blocks.push({ k: 'ol', t: ordered[3], i: indentOf(ordered[1]), n: Number(ordered[2]) })
+      continue
+    }
     const bullet = BULLET_LINE.exec(line)
-    if (bullet !== null) return { k: 'ul', t: bullet[2], i: indentOf(bullet[1]) }
-    return { k: 'p', t: line, i: 0 }
-  })
+    if (bullet !== null) {
+      blocks.push({ k: 'ul', t: bullet[2], i: indentOf(bullet[1]) })
+      continue
+    }
+    blocks.push({ k: 'p', t: line, i: 0 })
+  }
+  return blocks
 }
 
 export function blocksToText(blocks) {
@@ -32,6 +72,10 @@ export function blocksToText(blocks) {
     if (block.k === 'task') return `${indent}- [${block.c === true ? 'x' : ' '}] ${block.t}`
     if (block.k === 'ol') return `${indent}${Number(block.n) || 1}. ${block.t}`
     if (block.k === 'ul') return `${indent}- ${block.t}`
+    if (block.k === 'h1' || block.k === 'h2' || block.k === 'h3') return `${'#'.repeat(Number(block.k[1]))} ${block.t}`
+    if (block.k === 'quote') return `> ${block.t}`
+    if (block.k === 'divider') return '---'
+    if (block.k === 'code') return `\`\`\`${block.lang ?? ''}\n${block.t}\n\`\`\``
     return block.t
   }).join('\n')
 }

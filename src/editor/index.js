@@ -31,17 +31,41 @@ import {
   ListNode,
   registerList,
 } from '@lexical/list'
-import { registerRichText } from '@lexical/rich-text'
+import {
+  $createHeadingNode,
+  $createQuoteNode,
+  $isHeadingNode,
+  $isQuoteNode,
+  HeadingNode,
+  QuoteNode,
+  registerRichText,
+} from '@lexical/rich-text'
+import { $createCodeNode, $isCodeNode, CodeNode } from '@lexical/code'
+import {
+  CHECK_LIST,
+  CODE,
+  HEADING,
+  ORDERED_LIST,
+  QUOTE,
+  UNORDERED_LIST,
+  registerMarkdownShortcuts,
+} from '@lexical/markdown'
 import { createEmptyHistoryState, registerHistory } from '@lexical/history'
 import { blocksToText, inlineToText, parseBlocks, parseInline } from './text.js'
 
 const LIST_TYPES = { ul: 'bullet', ol: 'number', task: 'check' }
+const HEADING_TAGS = { h1: 'h1', h2: 'h2', h3: 'h3' }
 const BLOCK_KINDS = { bullet: 'ul', number: 'ol', check: 'task' }
 
 const STYLE_ID = 'pc-editor-style'
 const CSS = `
 .pc-editable { flex: 1 1 auto; overflow-y: auto; padding: 12px 14px 24px; outline: none; min-height: 0; font-size: 14px; line-height: 1.65; color: var(--dsw-alias-label-primary); caret-color: #3B7A57; }
 .pc-editable p { margin: 0; }
+.pc-editable h1 { font-size: 21px; line-height: 1.3; margin: 10px 0 6px; font-weight: 650; }
+.pc-editable h2 { font-size: 17px; line-height: 1.35; margin: 9px 0 5px; font-weight: 650; }
+.pc-editable h3 { font-size: 15px; line-height: 1.4; margin: 8px 0 4px; font-weight: 650; }
+.pc-editable blockquote { margin: 6px 0; padding: 2px 0 2px 12px; border-left: 3px solid #3B7A57; color: var(--dsw-alias-label-secondary); font-style: italic; }
+.pc-editable pre { margin: 8px 0; padding: 10px 12px; border-radius: 8px; background: var(--dsw-alias-bg-layer-3); overflow-x: auto; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12.5px; line-height: 1.55; }
 .pc-editable ul, .pc-editable ol { margin: 0; padding-left: 22px; }
 .pc-editable li { margin: 0; }
 .pc-editable li::marker { color: var(--dsw-alias-label-tertiary); }
@@ -65,6 +89,38 @@ export function importBlocks(blocks) {
   let list = null
   let listKind = null
   for (const block of blocks) {
+    if (HEADING_TAGS[block.k] !== undefined) {
+      list = null
+      listKind = null
+      const heading = $createHeadingNode(HEADING_TAGS[block.k])
+      for (const run of parseInline(block.t)) heading.append(textOf(run))
+      root.append(heading)
+      continue
+    }
+    if (block.k === 'quote') {
+      list = null
+      listKind = null
+      const quote = $createQuoteNode()
+      for (const run of parseInline(block.t)) quote.append(textOf(run))
+      root.append(quote)
+      continue
+    }
+    if (block.k === 'divider') {
+      list = null
+      listKind = null
+      const rule = $createParagraphNode()
+      rule.append($createTextNode('---'))
+      root.append(rule)
+      continue
+    }
+    if (block.k === 'code') {
+      list = null
+      listKind = null
+      const code = $createCodeNode(block.lang ?? '')
+      code.append($createTextNode(String(block.t ?? '')))
+      root.append(code)
+      continue
+    }
     const kind = block.k === 'p' ? null : LIST_TYPES[block.k]
     if (kind === null) {
       list = null
@@ -102,6 +158,19 @@ function textOf(run) {
 export function exportBlocks() {
   const blocks = []
   for (const child of $getRoot().getChildren()) {
+    if ($isHeadingNode(child)) {
+      blocks.push({ k: child.getTag() === 'h1' ? 'h1' : child.getTag() === 'h2' ? 'h2' : 'h3',
+        t: inlineToText(runsOf(child)), i: 0 })
+      continue
+    }
+    if ($isQuoteNode(child)) {
+      blocks.push({ k: 'quote', t: inlineToText(runsOf(child)), i: 0 })
+      continue
+    }
+    if ($isCodeNode(child)) {
+      blocks.push({ k: 'code', t: child.getTextContent(), i: 0, lang: child.getLanguage() ?? '' })
+      continue
+    }
     if ($isListNode(child)) {
       const kind = BLOCK_KINDS[child.getListType()] ?? 'ul'
       let ordinal = 0
@@ -173,7 +242,7 @@ export function mountBodyEditor(container, { initialText, onChange, onCommit, on
 
   const editor = createEditor({
     namespace: 'dsh-project-canvas',
-    nodes: [ListNode, ListItemNode],
+    nodes: [ListNode, ListItemNode, HeadingNode, QuoteNode, CodeNode],
     onError(error) {
       // eslint-disable-next-line no-console
       console.error('[project-canvas] editor error', error)
@@ -184,6 +253,7 @@ export function mountBodyEditor(container, { initialText, onChange, onCommit, on
   const unregister = [
     registerRichText(editor),
     registerList(editor),
+    registerMarkdownShortcuts(editor, [HEADING, QUOTE, CODE, UNORDERED_LIST, ORDERED_LIST, CHECK_LIST]),
     registerHistory(editor, createEmptyHistoryState(), 1200),
   ]
 
