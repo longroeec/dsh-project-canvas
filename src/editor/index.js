@@ -8,7 +8,9 @@ import {
   $createParagraphNode,
   $createTextNode,
   $getRoot,
+  $getSelection,
   $isElementNode,
+  $isRangeSelection,
   $isParagraphNode,
   $getNearestNodeFromDOMNode,
   $isTextNode,
@@ -79,6 +81,7 @@ const CSS = `
 .pc-toolbar { display: flex; align-items: center; gap: 2px; padding: 6px 12px; border-top: 1px solid var(--dsw-alias-border-l2); background: var(--dsw-alias-bg-layer-2); }
 .pc-tool { min-width: 30px; height: 26px; padding: 0 6px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 13px; cursor: pointer; }
 .pc-tool:hover { background: var(--dsw-alias-bg-layer-3); }
+.pc-select { height: 26px; padding: 0 6px; border-radius: 6px; border: 1px solid var(--dsw-alias-border-l2); background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); font: inherit; font-size: 12.5px; }
 .pc-split { width: 1px; height: 16px; margin: 0 6px; background: var(--dsw-alias-border-l2); }
 `
 
@@ -290,6 +293,8 @@ export function mountBodyEditor(container, { initialText, onChange, onCommit, on
     button('S', t('strikeTool'), () => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough')),
     button('</>', t('codeTool'), () => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code')),
     split(),
+    blockSelect,
+    split(),
     button('•', t('bulletTool'), () => editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)),
     button('1.', t('orderedTool'), () => editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)),
     button('☑', t('taskTool'), () => editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined)),
@@ -309,6 +314,41 @@ export function mountBodyEditor(container, { initialText, onChange, onCommit, on
     })
   }
   editable.addEventListener('click', onClick)
+
+  /** Turn the block under the caret into another kind — the toolbar path, no syntax to type. */
+  const setBlockType = (kind) => {
+    editor.update(() => {
+      const selection = $getSelection()
+      if (!$isRangeSelection(selection)) return
+      const top = selection.anchor.getNode().getTopLevelElement()
+      if (top === null || !$isElementNode(top)) return
+      let replacement
+      if (kind === 'p') replacement = $createParagraphNode()
+      else if (kind === 'quote') replacement = $createQuoteNode()
+      else if (kind === 'code') replacement = $createCodeNode('')
+      else if (kind === 'h1' || kind === 'h2' || kind === 'h3') replacement = $createHeadingNode(kind)
+      else return
+      for (const child of top.getChildren()) replacement.append(child)
+      top.replace(replacement)
+      replacement.selectStart()
+    })
+  }
+
+  const blockSelect = document.createElement('select')
+  blockSelect.className = 'pc-select'
+  blockSelect.title = t('blockType')
+  blockSelect.setAttribute('aria-label', t('blockType'))
+  for (const [value, label] of [
+    ['p', t('blockParagraph')], ['h1', t('blockH1')], ['h2', t('blockH2')],
+    ['h3', t('blockH3')], ['quote', t('blockQuote')], ['code', t('blockCode')],
+  ]) {
+    const option = document.createElement('option')
+    option.value = value
+    option.textContent = label
+    blockSelect.append(option)
+  }
+  blockSelect.addEventListener('mousedown', (event) => event.stopPropagation())
+  blockSelect.addEventListener('change', () => setBlockType(blockSelect.value))
 
   const onKeyDown = (event) => {
     event.stopPropagation()
