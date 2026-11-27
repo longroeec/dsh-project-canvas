@@ -54,6 +54,9 @@
     }
   },
   "devDependencies": {
+    "@blocknote/core": "^0.57.0",
+    "@blocknote/mantine": "^0.57.0",
+    "@blocknote/react": "^0.57.0",
     "@lexical/code": "^0.53.0",
     "@lexical/headless": "^0.53.0",
     "@lexical/history": "^0.53.0",

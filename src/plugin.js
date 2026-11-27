@@ -11,7 +11,7 @@
  *
  * Data goes through the Host plugin's /project-canvas/api, which keeps the harness trust fence.
  */
-import { mountBodyEditor } from './editor/index.js'
+import { mountBodyEditor } from './editor/blocknote.js'
 
 export function createClient(React) {
   const h = React.createElement

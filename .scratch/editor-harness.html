@@ -1,0 +1,29 @@
+<!doctype html><html><head><meta charset="utf-8"><title>editor harness</title></head>
+<body style="background:#1b1b1b;color:#eee;font-family:system-ui">
+<div id="host" style="width:640px;height:480px;display:flex;flex-direction:column;border:1px solid #444"></div>
+<script src="./editor-test.js"></script>
+<script>
+  window.__result = { status: 'pending', errors: [] }
+  window.addEventListener('error', (event) => window.__result.errors.push(String(event.message)))
+  try {
+    const handle = window.__mountBodyEditor(document.getElementById('host'), {
+      initialText: '# 标题\n正文 **加粗**\n- 项目\n- [ ] 待办\n```js\nconst a = 1\n```',
+      onChange: (text) => { window.__result.lastText = text },
+      onCommit: () => {},
+      onCancel: () => {},
+      t: (key) => key,
+    })
+    window.__handle = handle
+    window.__result.status = 'mounted'
+    window.__result.blocks = document.querySelectorAll('#host .bn-block').length
+    setTimeout(() => {
+      window.__result.blocksAfter = document.querySelectorAll('#host .bn-block').length
+      window.__result.hasSlashMenu = document.querySelectorAll('#host .bn-suggestion-menu').length
+      try { handle.focus() } catch (error) { window.__result.errors.push('focus: ' + error.message) }
+    }, 800)
+  } catch (error) {
+    window.__result.status = 'threw'
+    window.__result.errors.push(String(error && error.stack || error))
+  }
+</script>
+</body></html>

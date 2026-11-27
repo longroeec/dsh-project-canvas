@@ -16,6 +16,7 @@ await build({
   external: ['react'],
   legalComments: 'none',
   minify: true,
+  loader: { '.css': 'text' },
   define: { 'process.env.NODE_ENV': '"production"' },
   logLevel: 'info',
 })
