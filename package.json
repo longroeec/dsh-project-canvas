@@ -62,7 +62,8 @@
     "@lexical/utils": "^0.53.0",
     "esbuild": "^0.28.2",
     "jsdom": "^31.0.1",
-    "lexical": "^0.53.0"
+    "lexical": "^0.53.0",
+    "puppeteer-core": "^25.19.0"
   },
   "scripts": {
     "build": "node scripts/build.mjs"

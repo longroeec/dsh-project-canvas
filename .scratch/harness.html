@@ -1,0 +1,18 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>loader harness</title></head>
+<body>
+<script>
+  window.__registration = null
+  window.__ModuleLoader__ = { load(registration) { window.__registration = registration } }
+  window.__stubReact = function () {
+    const h = (type, props, ...children) => ({ type, props, children })
+    return {
+      createElement: h, Fragment: 'fragment',
+      useRef: (value) => ({ current: value }),
+      useState: (value) => [typeof value === 'function' ? value() : value, () => {}],
+      useEffect: () => {}, useLayoutEffect: () => {}, useCallback: (fn) => fn, useMemo: (fn) => fn(),
+    }
+  }
+</script>
+<script src="../client.js"></script>
+</body></html>

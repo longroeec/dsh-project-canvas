@@ -14,6 +14,8 @@
 import { mountBodyEditor } from './editor/index.js'
 
 export function createClient(React) {
+  const h = React.createElement
+  const { useCallback, useEffect, useLayoutEffect, useRef, useState } = React
 
     const NS = 'projectCanvas'
     const API = '/project-canvas/api'
